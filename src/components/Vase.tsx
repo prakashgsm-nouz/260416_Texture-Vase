@@ -28,11 +28,16 @@ export const Vase = ({ profileParams, textureParams }: any) => {
        uniforms.uTopRadius.value = profileParams.topRadius;
        uniforms.uHeight.value = profileParams.height;
        uniforms.uMidHeight.value = profileParams.midHeight;
+       uniforms.uMidRotation.value = profileParams.midRotation * Math.PI / 180.0;
        
        uniforms.uNoiseType.value = textureParams.noiseType;
-       uniforms.uNoiseScale.value = textureParams.noiseScale;
+       uniforms.uTextureScaleClosest.value = textureParams.textureScaleClosest;
+       uniforms.uTextureScaleFarthest.value = textureParams.textureScaleFarthest;
        uniforms.uDisplacement.value = textureParams.displacement;
+       uniforms.uTextureSharpening.value = textureParams.textureSharpening;
        uniforms.uInvertLogic.value = textureParams.invertLogic;
+       uniforms.uColorValley.value.set(textureParams.colorValley);
+       uniforms.uColorPeak.value.set(textureParams.colorPeak);
        
        const pts = appState.curvePoints;
        uniforms.uNumPoints.value = pts.length;
