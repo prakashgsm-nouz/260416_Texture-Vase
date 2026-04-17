@@ -86,11 +86,16 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
     shader.uniforms.uTopRadius = { value: 1.0 };
     shader.uniforms.uHeight = { value: 5.0 };
     shader.uniforms.uMidHeight = { value: 0.5 };
+    shader.uniforms.uMidRotation = { value: 0.0 };
     
     shader.uniforms.uNoiseType = { value: 0 };
-    shader.uniforms.uNoiseScale = { value: 3.0 };
+    shader.uniforms.uTextureScaleClosest = { value: 5.0 };
+    shader.uniforms.uTextureScaleFarthest = { value: 1.0 };
+    shader.uniforms.uTextureSharpening = { value: 0.0 };
     shader.uniforms.uDisplacement = { value: 0.5 };
     shader.uniforms.uInvertLogic = { value: false };
+    shader.uniforms.uColorValley = { value: new THREE.Color('#0d3380') };
+    shader.uniforms.uColorPeak = { value: new THREE.Color('#ff6633') };
     
     // Max 50 points
     shader.uniforms.uCurvePoints = { value: new Array(50).fill(0).map(()=>new THREE.Vector3()) };
@@ -102,9 +107,12 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       uniform float uTopRadius;
       uniform float uHeight;
       uniform float uMidHeight;
+      uniform float uMidRotation;
       
       uniform int uNoiseType;
-      uniform float uNoiseScale;
+      uniform float uTextureScaleClosest;
+      uniform float uTextureScaleFarthest;
+      uniform float uTextureSharpening;
       uniform float uDisplacement;
       uniform bool uInvertLogic;
       
@@ -145,21 +153,52 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       `
       #include <begin_vertex>
       
-      float yMap = (position.y + 0.5) * uHeight;
+      float normY = position.y + 0.5; // 0.0 to 1.0 natively via cylinder args
+      float yMap = normY * uHeight;
       float profileR = getRadius(yMap);
       
       vec3 profilePos = vec3(position.x * profileR, position.y * uHeight, position.z * profileR);
-      float noiseVal = getNoise(profilePos, uNoiseType, uNoiseScale);
+      
+      // Interpolate Rotation around Y
+      float rotAngle = 0.0;
+      if(normY < uMidHeight) {
+        rotAngle = mix(0.0, uMidRotation, smoothstep(0.0, 1.0, normY / uMidHeight));
+      } else {
+        rotAngle = mix(uMidRotation, 0.0, smoothstep(0.0, 1.0, (normY - uMidHeight) / (1.0 - uMidHeight)));
+      }
+      float c = cos(rotAngle);
+      float s = sin(rotAngle);
+      mat2 rMat = mat2(c, -s, s, c);
+      profilePos.xz = rMat * profilePos.xz;
       
       float dist = getDistanceToCurve(profilePos);
-      float falloff = smoothstep(3.0, 0.0, dist);
-      
+      float curveFalloff = smoothstep(3.0, 0.0, dist);
       if(uInvertLogic) {
-        falloff = 1.0 - falloff;
+        curveFalloff = 1.0 - curveFalloff;
+      }
+      
+      // Add ease-in and ease-out vertically so noise fades at top and bottom rims
+      float yFalloff = smoothstep(0.0, 0.05, normY) * (1.0 - smoothstep(0.95, 1.0, normY));
+      float falloff = curveFalloff * yFalloff;
+      
+      float currentScale = mix(uTextureScaleFarthest, uTextureScaleClosest, falloff);
+      float noiseVal = getNoise(profilePos, uNoiseType, currentScale);
+      
+      // Crisp Mountain Ridge Sharpening
+      float sharpened = noiseVal;
+      if (uTextureSharpening > 0.0) {
+          float ridged = noiseVal;
+          // For simplex and perlin, they are mostly [-1, 1], so we map to [0, 1] ridges
+          if (uNoiseType == 0 || uNoiseType == 1) {
+             ridged = 1.0 - abs(noiseVal);
+          }
+          // Increase exponent to sharpen peaks
+          float sharp = pow(ridged, 1.0 + uTextureSharpening * 4.0);
+          sharpened = mix(noiseVal, sharp, smoothstep(0.0, 1.0, uTextureSharpening));
       }
       
       vec2 dir = normalize(profilePos.xz);
-      float d = noiseVal * uDisplacement * falloff;
+      float d = sharpened * uDisplacement * falloff;
       
       profilePos.x += dir.x * d;
       profilePos.z += dir.y * d;
@@ -173,6 +212,8 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
     shader.fragmentShader = `
       varying float vDisplacement;
       uniform float uDisplacement;
+      uniform vec3 uColorValley;
+      uniform vec3 uColorPeak;
       varying vec2 vUv;
     ` + shader.fragmentShader;
 
@@ -181,13 +222,10 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       `
       #include <color_fragment>
       
-      vec3 colorValley = vec3(0.05, 0.2, 0.5); 
-      vec3 colorPeak = vec3(1.0, 0.4, 0.2); 
-      
       float t = (vDisplacement + uDisplacement*0.5) / (uDisplacement + 0.001); 
       t = clamp(t, 0.0, 1.0);
       
-      diffuseColor.rgb = mix(colorValley, colorPeak, t);
+      diffuseColor.rgb = mix(uColorValley, uColorPeak, t);
       `
     );
 
