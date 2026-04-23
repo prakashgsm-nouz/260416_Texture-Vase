@@ -21,8 +21,8 @@ export default function App() {
 
   const textureParams = useControls('Texture & Noise', {
     noiseType: { options: { Simplex: 0, Perlin: 1, Worley: 2, Alligator: 3 } },
-    textureScaleClosest: { value: 5.0, min: 0.00001, max: 20.0, step: 0.00001 },
-    textureScaleFarthest: { value: 1.0, min: 0.00001, max: 20.0, step: 0.00001 },
+    textureScaleClosest: { value: 5.0, min: 0.000001, max: 20.0, step: 0.000001 },
+    textureScaleFarthest: { value: 1.0, min: 0.000001, max: 20.0, step: 0.000001 },
     displacement: { value: 0.5, min: 0.0, max: 2.0 },
     textureSharpening: { value: 0.0, min: 0.0, max: 2.0, step: 0.01, label: 'Sharpen Ridges' },
     invertLogic: false,
