@@ -99,6 +99,9 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
     shader.uniforms.uTextureScaleFarthest = { value: 1.0 };
     shader.uniforms.uTextureSharpening = { value: 0.0 };
     shader.uniforms.uDisplacement = { value: 0.5 };
+    shader.uniforms.uInvertDisplacement = { value: false };
+    shader.uniforms.uEaseInBottom = { value: 0.05 };
+    shader.uniforms.uEaseOutTop = { value: 0.05 };
     shader.uniforms.uInvertLogic = { value: false };
     shader.uniforms.uColorValley = { value: new THREE.Color('#0d3380') };
     shader.uniforms.uColorPeak = { value: new THREE.Color('#ff6633') };
@@ -122,6 +125,9 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       uniform float uTextureScaleFarthest;
       uniform float uTextureSharpening;
       uniform float uDisplacement;
+      uniform bool uInvertDisplacement;
+      uniform float uEaseInBottom;
+      uniform float uEaseOutTop;
       uniform bool uInvertLogic;
       
       uniform vec3 uCurvePoints[50];
@@ -218,7 +224,9 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       }
       
       // Add ease-in and ease-out vertically so noise fades at top and bottom rims
-      float yFalloff = smoothstep(0.0, 0.05, normY) * (1.0 - smoothstep(0.95, 1.0, normY));
+      float easeIn = uEaseInBottom > 0.0 ? smoothstep(0.0, uEaseInBottom, normY) : 1.0;
+      float easeOut = uEaseOutTop > 0.0 ? (1.0 - smoothstep(1.0 - uEaseOutTop, 1.0, normY)) : 1.0;
+      float yFalloff = easeIn * easeOut;
       float falloff = curveFalloff * yFalloff;
       
       float currentScale = mix(uTextureScaleFarthest, uTextureScaleClosest, falloff);
@@ -239,6 +247,9 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       
       vec2 dir = normalize(profilePos.xz);
       float d = sharpened * uDisplacement * falloff;
+      if (uInvertDisplacement) {
+         d = -d;
+      }
       
       profilePos.x += dir.x * d;
       profilePos.z += dir.y * d;

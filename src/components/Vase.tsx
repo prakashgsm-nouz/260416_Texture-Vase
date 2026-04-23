@@ -36,6 +36,9 @@ export const Vase = ({ profileParams, textureParams, geoParams }: any) => {
        uniforms.uTextureScaleClosest.value = textureParams.textureScaleClosest;
        uniforms.uTextureScaleFarthest.value = textureParams.textureScaleFarthest;
        uniforms.uDisplacement.value = textureParams.displacement;
+       uniforms.uInvertDisplacement.value = textureParams.invertDisplacement;
+       uniforms.uEaseInBottom.value = textureParams.easeInBottom;
+       uniforms.uEaseOutTop.value = textureParams.easeOutTop;
        uniforms.uTextureSharpening.value = textureParams.textureSharpening;
        uniforms.uInvertLogic.value = textureParams.invertLogic;
        uniforms.uColorValley.value.set(textureParams.colorValley);
