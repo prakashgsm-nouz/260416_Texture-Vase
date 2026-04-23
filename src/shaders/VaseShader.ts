@@ -46,19 +46,25 @@ float snoise(vec3 v) {
   return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
 }
 
-float worley(vec3 p) {
+vec2 worleyF1F2(vec3 p) {
     vec3 n = floor(p);
     vec3 f = fract(p);
-    float res = 1.0;
+    float F1 = 1000.0;
+    float F2 = 1000.0;
     for(int k=-1; k<=1; k++)
     for(int j=-1; j<=1; j++)
     for(int i=-1; i<=1; i++) {
         vec3 b = vec3(float(i), float(j), float(k));
         vec3 r = vec3(b) - f + fract(sin(vec3(n + b)*vec3(12.9898, 78.233, 37.719))*43758.5453);
         float d = dot(r, r);
-        res = min(res, d);
+        if (d < F1) {
+            F2 = F1;
+            F1 = d;
+        } else if (d < F2) {
+            F2 = d;
+        }
     }
-    return sqrt(res);
+    return vec2(sqrt(F1), sqrt(F2));
 }
 
 float getNoise(vec3 pos, int type, float scale) {
@@ -67,13 +73,11 @@ float getNoise(vec3 pos, int type, float scale) {
     return snoise(p);
   } else if(type == 1) { // Perlin/FBM approx
     return snoise(p) * 0.5 + snoise(p * 2.0) * 0.25 + snoise(p * 4.0) * 0.125;
-  } else if(type == 2) { // Worley
-    return 1.0 - worley(p);
-  } else if(type == 3) { // Differential Growth Approx (Ridged FBM)
-    float n = abs(snoise(p));
-    n += 0.5 * abs(snoise(p * 2.0));
-    n += 0.25 * abs(snoise(p * 4.0));
-    return 1.0 - n;
+  } else if(type == 2) { // Worley F1 (Cellular)
+    return 1.0 - worleyF1F2(p).x;
+  } else if(type == 3) { // Alligator (Worley F2-F1)
+    vec2 w = worleyF1F2(p);
+    return w.y - w.x;
   }
   return 0.0;
 }
@@ -86,7 +90,9 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
     shader.uniforms.uTopRadius = { value: 1.0 };
     shader.uniforms.uHeight = { value: 5.0 };
     shader.uniforms.uMidHeight = { value: 0.5 };
-    shader.uniforms.uMidRotation = { value: 0.0 };
+    shader.uniforms.uMidRotX = { value: 0.0 };
+    shader.uniforms.uMidRotY = { value: 0.0 };
+    shader.uniforms.uMidRotZ = { value: 0.0 };
     
     shader.uniforms.uNoiseType = { value: 0 };
     shader.uniforms.uTextureScaleClosest = { value: 5.0 };
@@ -107,7 +113,9 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       uniform float uTopRadius;
       uniform float uHeight;
       uniform float uMidHeight;
-      uniform float uMidRotation;
+      uniform float uMidRotX;
+      uniform float uMidRotY;
+      uniform float uMidRotZ;
       
       uniform int uNoiseType;
       uniform float uTextureScaleClosest;
@@ -135,12 +143,18 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
         }
       }
       
+      float distToSegment(vec3 p, vec3 a, vec3 b) {
+          vec3 pa = p - a, ba = b - a;
+          float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+          return length( pa - ba*h );
+      }
+      
       float getDistanceToCurve(vec3 p) {
         float minDist = 10000.0;
-        for(int i = 0; i < 50; i++) {
-          if(i >= uNumPoints) break;
-          // Approximate curve as points to avoid heavy line distance calculation
-          float d = distance(p, uCurvePoints[i]);
+        // Grasshopper style segment distance
+        for(int i = 0; i < 49; i++) {
+          if(i >= uNumPoints - 1) break;
+          float d = distToSegment(p, uCurvePoints[i], uCurvePoints[i+1]);
           minDist = min(minDist, d);
         }
         return minDist;
@@ -157,19 +171,42 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       float yMap = normY * uHeight;
       float profileR = getRadius(yMap);
       
+      // Apply profile radius 
       vec3 profilePos = vec3(position.x * profileR, position.y * uHeight, position.z * profileR);
       
-      // Interpolate Rotation around Y
-      float rotAngle = 0.0;
+      // Calculate 3-Axis Rotation interpolation
+      float rotX = 0.0;
+      float rotY = 0.0;
+      float rotZ = 0.0;
       if(normY < uMidHeight) {
-        rotAngle = mix(0.0, uMidRotation, smoothstep(0.0, 1.0, normY / uMidHeight));
+        float f = smoothstep(0.0, 1.0, normY / uMidHeight);
+        rotX = mix(0.0, uMidRotX, f);
+        rotY = mix(0.0, uMidRotY, f);
+        rotZ = mix(0.0, uMidRotZ, f);
       } else {
-        rotAngle = mix(uMidRotation, 0.0, smoothstep(0.0, 1.0, (normY - uMidHeight) / (1.0 - uMidHeight)));
+        float f = smoothstep(0.0, 1.0, (normY - uMidHeight) / (1.0 - uMidHeight));
+        rotX = mix(uMidRotX, 0.0, f);
+        rotY = mix(uMidRotY, 0.0, f);
+        rotZ = mix(uMidRotZ, 0.0, f);
       }
-      float c = cos(rotAngle);
-      float s = sin(rotAngle);
-      mat2 rMat = mat2(c, -s, s, c);
-      profilePos.xz = rMat * profilePos.xz;
+      
+      // Apply Rotation around X-axis (Pitch / YZ plane bend)
+      float py = profilePos.y;
+      float pz = profilePos.z;
+      profilePos.y = py * cos(rotX) - pz * sin(rotX);
+      profilePos.z = py * sin(rotX) + pz * cos(rotX);
+      
+      // Apply Rotation around Z-axis (Roll / XY plane bend)
+      float px = profilePos.x;
+      py = profilePos.y;
+      profilePos.x = px * cos(rotZ) - py * sin(rotZ);
+      profilePos.y = px * sin(rotZ) + py * cos(rotZ);
+      
+      // Apply Rotation around Y-axis (Yaw / XZ twist)
+      px = profilePos.x;
+      pz = profilePos.z;
+      profilePos.x = px * cos(rotY) + pz * sin(rotY);
+      profilePos.z = -px * sin(rotY) + pz * cos(rotY);
       
       float dist = getDistanceToCurve(profilePos);
       float curveFalloff = smoothstep(3.0, 0.0, dist);
