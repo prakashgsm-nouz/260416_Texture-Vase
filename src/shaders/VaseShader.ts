@@ -208,7 +208,10 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
       profilePos.x = px * cos(rotY) + pz * sin(rotY);
       profilePos.z = -px * sin(rotY) + pz * cos(rotY);
       
-      float dist = getDistanceToCurve(profilePos);
+      // The curve points are located in World Space relative to the bottom of the Vase
+      // By offsetting our evaluation Y by uHeight * 0.5, we perfectly align the shader's internal coordinates with the mesh group's world position!
+      vec3 curveEvaluatePos = vec3(profilePos.x, profilePos.y + uHeight * 0.5, profilePos.z);
+      float dist = getDistanceToCurve(curveEvaluatePos);
       float curveFalloff = smoothstep(3.0, 0.0, dist);
       if(uInvertLogic) {
         curveFalloff = 1.0 - curveFalloff;
