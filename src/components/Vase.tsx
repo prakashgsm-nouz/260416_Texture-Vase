@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { appState } from '../state';
 import { modifyVaseMaterial } from '../shaders/VaseShader';
 
-export const Vase = ({ profileParams, textureParams }: any) => {
+export const Vase = ({ profileParams, textureParams, geoParams }: any) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
   const material = useMemo(() => {
@@ -28,7 +28,9 @@ export const Vase = ({ profileParams, textureParams }: any) => {
        uniforms.uTopRadius.value = profileParams.topRadius;
        uniforms.uHeight.value = profileParams.height;
        uniforms.uMidHeight.value = profileParams.midHeight;
-       uniforms.uMidRotation.value = profileParams.midRotation * Math.PI / 180.0;
+       uniforms.uMidRotX.value = profileParams.midRotX * Math.PI / 180.0;
+       uniforms.uMidRotY.value = profileParams.midRotY * Math.PI / 180.0;
+       uniforms.uMidRotZ.value = profileParams.midRotZ * Math.PI / 180.0;
        
        uniforms.uNoiseType.value = textureParams.noiseType;
        uniforms.uTextureScaleClosest.value = textureParams.textureScaleClosest;
@@ -54,8 +56,14 @@ export const Vase = ({ profileParams, textureParams }: any) => {
     }
   });
 
-  // Geometry remains static, size is driven by shader
-  const geometryArgs = useMemo(() => [1, 1, 1, 512, 512] as any, []);
+  // Subdivision Lvl adjusts base resolution
+  const geometryArgs = useMemo(() => {
+     let res = 128; // base
+     if (geoParams.subdivisionLevel === 2) res = 256;
+     if (geoParams.subdivisionLevel === 3) res = 512;
+     if (geoParams.subdivisionLevel === 4) res = 1024;
+     return [1, 1, 1, res, res] as any;
+  }, [geoParams.subdivisionLevel]);
 
   return (
     <mesh ref={meshRef} material={material} castShadow receiveShadow>

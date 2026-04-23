@@ -1,7 +1,7 @@
 // Removed React import
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
-import { Leva, useControls } from 'leva';
+import { Leva, useControls, folder } from 'leva';
 import { Vase } from './components/Vase';
 import { AttractorCurve } from './components/AttractorCurve';
 
@@ -12,18 +12,28 @@ export default function App() {
     midRadius: { value: 2.0, min: 0.1, max: 5.0 },
     height: { value: 5.0, min: 1.0, max: 10.0 },
     midHeight: { value: 0.5, min: 0.1, max: 0.9, step: 0.01 },
-    midRotation: { value: 0.0, min: -45.0, max: 45.0, step: 1.0, label: 'Mid Rotation (deg)' },
+    Rotations: folder({
+      midRotX: { value: 0.0, min: -45.0, max: 45.0, step: 1.0, label: 'Bend Pitch (X)' },
+      midRotY: { value: 0.0, min: -45.0, max: 45.0, step: 1.0, label: 'Twist Yaw (Y)' },
+      midRotZ: { value: 0.0, min: -45.0, max: 45.0, step: 1.0, label: 'Bend Roll (Z)' },
+    })
   });
 
   const textureParams = useControls('Texture & Noise', {
-    noiseType: { options: { Simplex: 0, Perlin: 1, Worley: 2, 'Differential Growth': 3 } },
+    noiseType: { options: { Simplex: 0, Perlin: 1, Worley: 2, Alligator: 3 } },
     textureScaleClosest: { value: 5.0, min: 0.00001, max: 20.0, step: 0.00001 },
     textureScaleFarthest: { value: 1.0, min: 0.00001, max: 20.0, step: 0.00001 },
     displacement: { value: 0.5, min: 0.0, max: 2.0 },
     textureSharpening: { value: 0.0, min: 0.0, max: 2.0, step: 0.01, label: 'Sharpen Ridges' },
     invertLogic: false,
-    colorValley: '#0d3380',
-    colorPeak: '#ff6633'
+    Colors: folder({
+      colorValley: '#0d3380',
+      colorPeak: '#ff6633'
+    })
+  });
+
+  const geoParams = useControls('Geometry Base', {
+    subdivisionLevel: { value: 3, min: 1, max: 4, step: 1, label: 'Subdivision Lvl' }
   });
 
   return (
@@ -38,7 +48,7 @@ export default function App() {
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
         
-        <Vase profileParams={profileParams} textureParams={textureParams} />
+        <Vase profileParams={profileParams} textureParams={textureParams} geoParams={geoParams} />
         <AttractorCurve />
 
         <OrbitControls makeDefault />
