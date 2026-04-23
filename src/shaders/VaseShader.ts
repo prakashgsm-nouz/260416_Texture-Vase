@@ -196,17 +196,19 @@ export const modifyVaseMaterial = (material: THREE.Material) => {
         rotZ = mix(uMidRotZ, 0.0, f);
       }
       
+      float pivotY = (uMidHeight - 0.5) * uHeight;
+      
       // Apply Rotation around X-axis (Pitch / YZ plane bend)
-      float py = profilePos.y;
+      float py = profilePos.y - pivotY;
       float pz = profilePos.z;
-      profilePos.y = py * cos(rotX) - pz * sin(rotX);
+      profilePos.y = py * cos(rotX) - pz * sin(rotX) + pivotY;
       profilePos.z = py * sin(rotX) + pz * cos(rotX);
       
       // Apply Rotation around Z-axis (Roll / XY plane bend)
       float px = profilePos.x;
-      py = profilePos.y;
+      py = profilePos.y - pivotY;
       profilePos.x = px * cos(rotZ) - py * sin(rotZ);
-      profilePos.y = px * sin(rotZ) + py * cos(rotZ);
+      profilePos.y = px * sin(rotZ) + py * cos(rotZ) + pivotY;
       
       // Apply Rotation around Y-axis (Yaw / XZ twist)
       px = profilePos.x;

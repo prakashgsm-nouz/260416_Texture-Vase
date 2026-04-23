@@ -82,8 +82,10 @@ export const exportGeometry = (format: 'stl'|'obj'|'gltf', geoParams: any, profi
   if (geoParams.subdivisionLevel === 3) res = 512;
   if (geoParams.subdivisionLevel === 4) res = 1024;
   
-  const geo = new THREE.CylinderGeometry(1, 1, 1, res, res, false);
+  const geo = new THREE.CylinderGeometry(1, 1, 1, res, res, true);
   const pos = geo.attributes.position;
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(pos.count * 3), 3));
+  const colors = geo.attributes.color;
   const snoise3 = createNoise3D();
   
   const getNoise = (px: number, py: number, pz: number, type: number, scale: number) => {
@@ -100,7 +102,10 @@ export const exportGeometry = (format: 'stl'|'obj'|'gltf', geoParams: any, profi
 
   const { baseRadius, midRadius, topRadius, height, midHeight } = profileParams;
   const { midRotX, midRotY, midRotZ } = profileParams; 
-  const { noiseType, textureScaleClosest, textureScaleFarthest, displacement, invertDisplacement, textureSharpening, invertLogic, easeInBottom, easeOutTop } = textureParams;
+  const { noiseType, textureScaleClosest, textureScaleFarthest, displacement, invertDisplacement, textureSharpening, invertLogic, easeInBottom, easeOutTop, Colors } = textureParams;
+  
+  const cValley = new THREE.Color(Colors?.colorValley || '#0d3380');
+  const cPeak = new THREE.Color(Colors?.colorPeak || '#ff6633');
   
   const rx = (midRotX || 0) * Math.PI / 180.0;
   const ry = (midRotY || 0) * Math.PI / 180.0;
@@ -132,13 +137,15 @@ export const exportGeometry = (format: 'stl'|'obj'|'gltf', geoParams: any, profi
          curX = rx * (1-f); curY = ry * (1-f); curZ = rz * (1-f);
       }
       
-      let p_y = profY, p_z = profZ;
-      profY = p_y * Math.cos(curX) - p_z * Math.sin(curX);
+      const pivotY = (midHeight - 0.5) * height;
+      
+      let p_y = profY - pivotY, p_z = profZ;
+      profY = p_y * Math.cos(curX) - p_z * Math.sin(curX) + pivotY;
       profZ = p_y * Math.sin(curX) + p_z * Math.cos(curX);
       
-      let p_x = profX; p_y = profY;
+      let p_x = profX; p_y = profY - pivotY;
       profX = p_x * Math.cos(curZ) - p_y * Math.sin(curZ);
-      profY = p_x * Math.sin(curZ) + p_y * Math.cos(curZ);
+      profY = p_x * Math.sin(curZ) + p_y * Math.cos(curZ) + pivotY;
       
       p_x = profX; p_z = profZ;
       profX = p_x * Math.cos(curY) + p_z * Math.sin(curY);
@@ -170,6 +177,11 @@ export const exportGeometry = (format: 'stl'|'obj'|'gltf', geoParams: any, profi
       profZ += (profZ / dirLength) * d;
       
       pos.setXYZ(i, profX, profY, profZ);
+      
+      let t = (d + displacement*0.5) / (displacement + 0.001);
+      t = clamp(t, 0.0, 1.0);
+      const cMix = cValley.clone().lerp(cPeak, t);
+      colors.setXYZ(i, cMix.r, cMix.g, cMix.b);
   }
   
   geo.computeVertexNormals();

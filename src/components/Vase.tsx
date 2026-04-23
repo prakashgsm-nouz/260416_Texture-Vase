@@ -65,7 +65,7 @@ export const Vase = ({ profileParams, textureParams, geoParams }: any) => {
      if (geoParams.subdivisionLevel === 2) res = 256;
      if (geoParams.subdivisionLevel === 3) res = 512;
      if (geoParams.subdivisionLevel === 4) res = 1024;
-     return [1, 1, 1, res, res] as any;
+     return [1, 1, 1, res, res, true] as any;
   }, [geoParams.subdivisionLevel]);
 
   return (
