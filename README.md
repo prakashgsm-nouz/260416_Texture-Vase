@@ -4,12 +4,12 @@ A browser-based, interactive 3D vase generator build with React Three Fiber. Use
 
 ## Features
 - Parametric Base, Mid, and Top radius controls.
-- Realtime Vertex Displacement (Simplex, Perlin, Worley, Differential FBM).
+- Realtime Vertex Displacement Options: Simplex, Perlin, Worley, and Alligator noise.
 - **New:** "Crisp Mountain Ridges" texture sharpening modifier targeting high peaks.
-- **New:** High-Precision Dynamic Texture Scaling mapping closest and farthest values to the attractor curve.
+- **New:** Dynamic GPU Subdivision parameter forcing scaling polygon resolutions logically without custom web compute constraints.
 - **New:** Smooth ease-in / ease-out fading applying textures correctly within the Y-axis perimeter limits.
-- **New:** Editable mid-curve rotation parameter manipulating mesh torsion from -45 to 45 degrees.
-- 3D Interactive Attractor Curve using Catmull-Rom spline and TransformControls.
+- **New:** Segment-calculated Grasshopper-style 3D Attractor curve matching explicitly projected line continuity accurately over distance scaling arrays!
+- Editable XYZ Rotations driving structural torsions from Pitch, Yaw, and Roll configurations safely within `-45` and `45` bounds.
 - Displacement-mapped Normal recalculating for accurate lighting.
 - Gradient colouring mapping peak/valleys values, now with customizable Leva color swatches!
 
