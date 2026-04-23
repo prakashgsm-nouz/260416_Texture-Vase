@@ -36,7 +36,9 @@ export default function App() {
   }));
 
   const [geoParams, setGeoConfig] = useControls('Geometry Base', () => ({
-    subdivisionLevel: { value: 3, min: 1, max: 4, step: 1, label: 'Subdivision Lvl' }
+    subdivisionLevel: { value: 3, min: 1, max: 4, step: 1, label: 'Subdivision Lvl' },
+    showAttractor: { value: true, label: 'Show Attractor' },
+    wireframePreview: { value: false, label: 'Mesh Preview (Wireframe)' }
   }));
 
   return (
@@ -56,7 +58,7 @@ export default function App() {
         <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
         
         <Vase profileParams={profileParams} textureParams={textureParams} geoParams={geoParams} />
-        <AttractorCurve />
+        {geoParams.showAttractor && <AttractorCurve />}
 
         <OrbitControls makeDefault />
         <Environment preset="city" />

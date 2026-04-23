@@ -21,6 +21,8 @@ export const Vase = ({ profileParams, textureParams, geoParams }: any) => {
   }, []);
 
   useFrame(() => {
+    material.wireframe = geoParams.wireframePreview;
+    
     if(material.userData.shader) {
        const uniforms = material.userData.shader.uniforms;
        uniforms.uBaseRadius.value = profileParams.baseRadius;
